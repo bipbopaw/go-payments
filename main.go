@@ -2,6 +2,14 @@ package main
 
 import "fmt"
 
+var (
+	ErrUserNil           = fmt.Errorf("user is nil")
+	ErrUserExists        = fmt.Errorf("user already exists")
+	ErrUserNotFound      = fmt.Errorf("user not found")
+	ErrInsufficientFunds = fmt.Errorf("insufficient funds")
+	ErrInvalidAmount     = fmt.Errorf("invalid amount")
+)
+
 type User struct {
 	ID      string
 	Name    string
@@ -21,7 +29,7 @@ type PaymentSystem struct {
 
 func (ps *PaymentSystem) AddUser(user *User) error {
 	if user == nil {
-		return fmt.Errorf("user is nil")
+		return ErrUserNil
 	}
 
 	if ps.Users == nil {
@@ -29,7 +37,7 @@ func (ps *PaymentSystem) AddUser(user *User) error {
 	}
 
 	if _, exists := ps.Users[user.ID]; exists {
-		return fmt.Errorf("user already exists")
+		return ErrUserExists
 	}
 
 	ps.Users[user.ID] = user
@@ -41,14 +49,18 @@ func (ps *PaymentSystem) AddTransaction(t Transaction) {
 }
 
 func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
+	if t.Amount <= 0 {
+		return ErrInvalidAmount
+	}
+
 	fromUser, ok := ps.Users[t.FromID]
 	if !ok {
-		return fmt.Errorf("from user not found")
+		return fmt.Errorf("from: %w", ErrUserNotFound)
 	}
 
 	toUser, ok := ps.Users[t.ToID]
 	if !ok {
-		return fmt.Errorf("to user not found")
+		return fmt.Errorf("to: %w", ErrUserNotFound)
 	}
 
 	if err := fromUser.Withdraw(t.Amount); err != nil {
@@ -59,13 +71,21 @@ func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
 	return nil
 }
 
-func (u *User) Deposit(amount float64) {
+func (u *User) Deposit(amount float64) error {
+	if amount <= 0 {
+		return ErrInvalidAmount
+	}
 	u.Balance += amount
+	return nil
 }
 
 func (u *User) Withdraw(amount float64) error {
+	if amount <= 0 {
+		return ErrInvalidAmount
+	}
+
 	if u.Balance < amount {
-		return fmt.Errorf("insufficient funds")
+		return ErrInsufficientFunds
 	}
 
 	u.Balance -= amount
@@ -96,11 +116,11 @@ func main() {
 
 	for _, t := range ps.Transactions {
 		if err := ps.ProcessingTransactions(t); err != nil {
-			fmt.Println(err)
+			fmt.Println("transaction error:", err)
 		}
 	}
 
 	fmt.Println("Итого")
 	fmt.Println("User1:", ps.Users["1"].Balance) // 850
-	fmt.Println("User1:", ps.Users["2"].Balance) // 650
+	fmt.Println("User2:", ps.Users["2"].Balance) // 650
 }
