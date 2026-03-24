@@ -81,7 +81,10 @@ func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
 		return err
 	}
 
-	toUser.Deposit(t.Amount)
+	if err := toUser.Deposit(t.Amount); err != nil {
+		return err
+	}
+
 	return nil
 }
 
